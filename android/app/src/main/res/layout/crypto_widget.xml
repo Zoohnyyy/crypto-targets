@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/widget_background"
+    android:padding="12dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingBottom="6dp">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Crypto Prices"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/updated_at"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Tap to open"
+            android:textColor="#9AA0A6"
+            android:textSize="10sp" />
+    </LinearLayout>
+
+    <!-- Row template repeated 4x -->
+    <LinearLayout android:id="@+id/row_0"
+        android:layout_width="match_parent" android:layout_height="0dp"
+        android:layout_weight="1" android:orientation="horizontal"
+        android:gravity="center_vertical">
+        <TextView android:id="@+id/ticker_0" android:layout_width="0dp"
+            android:layout_height="wrap_content" android:layout_weight="1"
+            android:textColor="#FFFFFF" android:textStyle="bold" android:textSize="14sp"
+            android:text="BTC" />
+        <TextView android:id="@+id/price_0" android:layout_width="wrap_content"
+            android:layout_height="wrap_content" android:textColor="#FFFFFF"
+            android:textSize="14sp" android:paddingEnd="8dp" android:text="$0" />
+        <TextView android:id="@+id/change_0" android:layout_width="52dp"
+            android:layout_height="wrap_content" android:gravity="end"
+            android:textColor="#16C784" android:textSize="12sp" android:text="0%" />
+    </LinearLayout>
+
+    <LinearLayout android:id="@+id/row_1"
+        android:layout_width="match_parent" android:layout_height="0dp"
+        android:layout_weight="1" android:orientation="horizontal"
+        android:gravity="center_vertical">
+        <TextView android:id="@+id/ticker_1" android:layout_width="0dp"
+            android:layout_height="wrap_content" android:layout_weight="1"
+            android:textColor="#FFFFFF" android:textStyle="bold" android:textSize="14sp"
+            android:text="ETH" />
+        <TextView android:id="@+id/price_1" android:layout_width="wrap_content"
+            android:layout_height="wrap_content" android:textColor="#FFFFFF"
+            android:textSize="14sp" android:paddingEnd="8dp" android:text="$0" />
+        <TextView android:id="@+id/change_1" android:layout_width="52dp"
+            android:layout_height="wrap_content" android:gravity="end"
+            android:textColor="#16C784" android:textSize="12sp" android:text="0%" />
+    </LinearLayout>
+
+    <LinearLayout android:id="@+id/row_2"
+        android:layout_width="match_parent" android:layout_height="0dp"
+        android:layout_weight="1" android:orientation="horizontal"
+        android:gravity="center_vertical">
+        <TextView android:id="@+id/ticker_2" android:layout_width="0dp"
+            android:layout_height="wrap_content" android:layout_weight="1"
+            android:textColor="#FFFFFF" android:textStyle="bold" android:textSize="14sp"
+            android:text="SOL" />
+        <TextView android:id="@+id/price_2" android:layout_width="wrap_content"
+            android:layout_height="wrap_content" android:textColor="#FFFFFF"
+            android:textSize="14sp" android:paddingEnd="8dp" android:text="$0" />
+        <TextView android:id="@+id/change_2" android:layout_width="52dp"
+            android:layout_height="wrap_content" android:gravity="end"
+            android:textColor="#16C784" android:textSize="12sp" android:text="0%" />
+    </LinearLayout>
+
+    <LinearLayout android:id="@+id/row_3"
+        android:layout_width="match_parent" android:layout_height="0dp"
+        android:layout_weight="1" android:orientation="horizontal"
+        android:gravity="center_vertical">
+        <TextView android:id="@+id/ticker_3" android:layout_width="0dp"
+            android:layout_height="wrap_content" android:layout_weight="1"
+            android:textColor="#FFFFFF" android:textStyle="bold" android:textSize="14sp"
+            android:text="BNB" />
+        <TextView android:id="@+id/price_3" android:layout_width="wrap_content"
+            android:layout_height="wrap_content" android:textColor="#FFFFFF"
+            android:textSize="14sp" android:paddingEnd="8dp" android:text="$0" />
+        <TextView android:id="@+id/change_3" android:layout_width="52dp"
+            android:layout_height="wrap_content" android:gravity="end"
+            android:textColor="#16C784" android:textSize="12sp" android:text="0%" />
+    </LinearLayout>
+
+</LinearLayout>
