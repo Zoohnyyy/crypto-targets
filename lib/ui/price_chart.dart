@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../services/coingecko_service.dart';
+import '../services/market_history_service.dart';
 
 const _green = Color(0xFF16C784);
 const _red = Color(0xFFEA3943);

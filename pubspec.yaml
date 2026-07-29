@@ -1,5 +1,5 @@
 name: crypto_prices
-description: "Real-time cryptocurrency prices with a home screen widget and price alerts."
+description: "Crypto Targets — real-time cryptocurrency prices, portfolio tracking, home screen widgets, and price alerts."
 publish_to: 'none'
 version: 1.0.0+1
 

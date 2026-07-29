@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 /// The Zcash (ZEC) logo, drawn as a vector so the "Z" can be recolored by
 /// theme: white in dark mode, black in light mode, on the Zcash gold disc.
 ///
-/// CoinGecko only serves a single fixed PNG (gold disc, black Z), which looks
-/// wrong on dark backgrounds — hence this bundled, theme-aware version.
+/// The logo CDNs only serve a single fixed PNG (gold disc, black Z), which
+/// looks wrong on dark backgrounds — hence this bundled, theme-aware version.
 class ZecLogo extends StatelessWidget {
   const ZecLogo({super.key, required this.size, required this.brightness});
 

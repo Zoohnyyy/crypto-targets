@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="widget_description">Live crypto prices on your home screen.</string>
+    <string name="portfolio_widget_description">Your total portfolio value on your home screen.</string>
+    <!-- Kept short: it has to fit on one line of a 4x1 widget. -->
+    <string name="portfolio_widget_empty">Add holdings to see your total</string>
+    <string name="widget_tap_to_open">Tap to open</string>
 </resources>

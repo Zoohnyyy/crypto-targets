@@ -61,11 +61,7 @@ class _AddCoinScreenState extends State<AddCoinScreen> {
     for (final base in _allBases) {
       if (seen.contains(base)) continue;
       if (q.isEmpty || base.contains(q)) {
-        out.add(Coin(
-          symbol: base,
-          name: nameForSymbol(base),
-          coingeckoId: coingeckoIdForSymbol(base),
-        ));
+        out.add(Coin(symbol: base, name: nameForSymbol(base)));
         seen.add(base);
       }
     }

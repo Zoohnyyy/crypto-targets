@@ -8,7 +8,7 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
-        android:label="Crypto Prices"
+        android:label="Crypto Targets"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
 
@@ -36,11 +36,11 @@
             android:name="flutterEmbedding"
             android:value="2" />
 
-        <!-- Home screen widget provider. -->
+        <!-- Home screen widget provider: watchlist prices. -->
         <receiver
             android:name=".CryptoWidgetProvider"
             android:exported="true"
-            android:label="Crypto Prices">
+            android:label="Crypto Targets — Prices">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
                 <!-- Custom action fired when a widget cell is tapped. -->
@@ -49,6 +49,19 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/crypto_widget_info" />
+        </receiver>
+
+        <!-- Home screen widget provider: portfolio total. -->
+        <receiver
+            android:name=".PortfolioWidgetProvider"
+            android:exported="true"
+            android:label="Crypto Targets — Portfolio">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/portfolio_widget_info" />
         </receiver>
 
     </application>

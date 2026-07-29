@@ -26,23 +26,43 @@ class BybitService {
   bool _disposed = false;
   int _backoffMs = 1000;
   Timer? _reconnectTimer;
+  Timer? _pingTimer;
+
+  /// Bybit closes public sockets that go quiet, so send an app-level ping well
+  /// inside that window to keep the feed alive.
+  static const Duration _pingInterval = Duration(seconds: 20);
 
   final StreamController<PriceTick> _controller =
       StreamController<PriceTick>.broadcast();
 
   Stream<PriceTick> get ticks => _controller.stream;
 
-  /// Subscribe to the given Bybit-sourced coins. Reconnects only when the
-  /// symbol set actually changes.
+  /// Subscribe to the given coins. Only Bybit-sourced coins are used; coins on
+  /// other exchanges are ignored here (handled by their own service).
+  ///
+  /// Filtering matters: Bybit rejects an entire `subscribe` frame if *any*
+  /// topic in it names a symbol that isn't listed on Bybit spot. Passing the
+  /// whole watchlist through would therefore kill the subscription for the
+  /// coins that *are* on Bybit (e.g. HYPE), leaving them stuck on the last
+  /// REST snapshot instead of streaming.
   void subscribe(List<Coin> coins) {
-    final next = coins.map((c) => c.bybitSymbol).toList()..sort();
+    final next = symbolsFor(coins);
     if (_listEquals(next, _symbols) && _channel != null) return;
     _symbols = next;
     _reconnect();
   }
 
+  /// The sorted Bybit spot symbols to subscribe to for [coins]. Exposed so the
+  /// exchange filtering above can be covered by tests.
+  static List<String> symbolsFor(List<Coin> coins) => coins
+      .where((c) => c.exchange == Exchange.bybit)
+      .map((c) => c.bybitSymbol)
+      .toList()
+    ..sort();
+
   void _reconnect() {
     _reconnectTimer?.cancel();
+    _pingTimer?.cancel();
     _sub?.cancel();
     _channel?.sink.close();
     _channel = null;
@@ -61,6 +81,14 @@ class BybitService {
       // Send the subscribe frame once the socket is ready.
       final args = _symbols.map((s) => 'tickers.$s').toList();
       channel.sink.add(jsonEncode({'op': 'subscribe', 'args': args}));
+
+      _pingTimer = Timer.periodic(_pingInterval, (_) {
+        try {
+          channel.sink.add(jsonEncode({'op': 'ping'}));
+        } catch (_) {
+          _scheduleReconnect();
+        }
+      });
     } catch (_) {
       _scheduleReconnect();
     }
@@ -68,6 +96,7 @@ class BybitService {
 
   void _scheduleReconnect() {
     if (_disposed || _symbols.isEmpty) return;
+    _pingTimer?.cancel();
     _reconnectTimer?.cancel();
     _reconnectTimer = Timer(Duration(milliseconds: _backoffMs), () {
       _backoffMs = (_backoffMs * 2).clamp(1000, 30000);
@@ -113,13 +142,18 @@ class BybitService {
     );
   }
 
-  /// One-shot REST snapshot for the given Bybit coins.
+  /// One-shot REST snapshot for the Bybit-sourced coins in [coins].
+  ///
+  /// Non-Bybit coins are filtered out so a dual-listed coin's Binance price
+  /// isn't overwritten by Bybit's when callers merge both snapshots.
   static Future<List<PriceTick>> fetchSnapshot(List<Coin> coins) async {
-    if (coins.isEmpty) return const [];
+    final bybitCoins =
+        coins.where((c) => c.exchange == Exchange.bybit).toList();
+    if (bybitCoins.isEmpty) return const [];
     final out = <PriceTick>[];
 
     // Bybit's tickers endpoint returns all spot symbols; fetch once and filter.
-    final wanted = coins.map((c) => c.bybitSymbol).toSet();
+    final wanted = bybitCoins.map((c) => c.bybitSymbol).toSet();
     final uri = Uri.parse('$_restBase/v5/market/tickers?category=spot');
     final res = await http.get(uri).timeout(const Duration(seconds: 15));
     if (res.statusCode != 200) {
@@ -139,6 +173,7 @@ class BybitService {
   void dispose() {
     _disposed = true;
     _reconnectTimer?.cancel();
+    _pingTimer?.cancel();
     _sub?.cancel();
     _channel?.sink.close();
     _controller.close();

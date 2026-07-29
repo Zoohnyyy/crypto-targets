@@ -21,7 +21,6 @@ class Coin {
     required this.symbol,
     required this.name,
     this.exchange = Exchange.binance,
-    this.coingeckoId,
   });
 
   /// Base asset symbol, lowercase (e.g. "btc", "eth", "sol").
@@ -32,11 +31,6 @@ class Coin {
 
   /// The exchange this coin's price feed comes from.
   final Exchange exchange;
-
-  /// CoinGecko coin id (e.g. "bitcoin"), used to fetch the logo and the
-  /// 7d/30d change stats. Null for coins added directly from the exchange
-  /// list that aren't in our curated catalog.
-  final String? coingeckoId;
 
   /// The lowercase Binance stream symbol, e.g. "btcusdt".
   String get binanceSymbol => '${symbol}usdt';
@@ -51,14 +45,12 @@ class Coin {
         'symbol': symbol,
         'name': name,
         'exchange': exchange.name,
-        if (coingeckoId != null) 'coingeckoId': coingeckoId,
       };
 
   factory Coin.fromJson(Map<String, dynamic> json) => Coin(
         symbol: json['symbol'] as String,
         name: json['name'] as String,
         exchange: Exchange.fromName(json['exchange'] as String?),
-        coingeckoId: json['coingeckoId'] as String?,
       );
 
   @override

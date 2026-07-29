@@ -45,6 +45,7 @@ Future<void> _runRefresh() async {
   final watchlist = await storage.loadWatchlist();
   final portfolio = await storage.loadPortfolio();
   final portfolioAlerts = await storage.loadPortfolioAlerts();
+  final hideBalances = await storage.loadHideBalances();
 
   // Every token we need a price for: watchlist + portfolio holdings +
   // alert-denomination tokens.
@@ -72,7 +73,12 @@ Future<void> _runRefresh() async {
 
   // Persist for the in-app view and the widget.
   await StorageService.cachePrices(priceMap);
-  await WidgetService.update(watchlist, priceMap);
+  await WidgetService.update(
+    watchlist,
+    priceMap,
+    portfolio: portfolio,
+    hideBalances: hideBalances,
+  );
 
   await _evaluateAlerts(storage, priceMap);
   await _evaluatePortfolioAlerts(storage, portfolio, priceMap);

@@ -9,11 +9,12 @@ import 'add_coin_screen.dart';
 import 'alerts_screen.dart';
 import 'coin_detail_screen.dart';
 import 'coin_tile.dart';
-import 'portfolio_screen.dart';
 import 'theme/app_theme.dart';
 
-/// Main screen: the live, editable watchlist. Each row shows the live price,
-/// 24h change, and the 7d/30d changes together.
+/// The live, editable watchlist. Each row shows the live price, 24h change,
+/// and the 7d/30d changes together.
+///
+/// Reached via the second tab of [MainShell] — the app opens on holdings.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -39,7 +40,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Crypto Prices'),
+        title: const Text('Crypto Targets'),
         actions: [
           Consumer<ThemeProvider>(
             builder: (context, theme, _) => IconButton(
@@ -50,14 +51,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   ? Icons.light_mode_outlined
                   : Icons.dark_mode_outlined),
               onPressed: theme.toggle,
-            ),
-          ),
-          IconButton(
-            tooltip: 'Portfolio',
-            icon: const Icon(Icons.account_balance_wallet_outlined),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const PortfolioScreen()),
             ),
           ),
           IconButton(
@@ -118,11 +111,11 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     return RefreshIndicator(
-      onRefresh: () async {
-        // Live socket already updates; pull-to-refresh just gives feedback.
-        await Future<void>.delayed(const Duration(milliseconds: 400));
-      },
+      // The live socket normally keeps this current; pulling forces a fresh
+      // REST snapshot + stats and reconnects any socket that dropped.
+      onRefresh: state.refresh,
       child: ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.only(top: 6, bottom: 100),
         itemCount: coins.length,
         itemBuilder: (context, i) {

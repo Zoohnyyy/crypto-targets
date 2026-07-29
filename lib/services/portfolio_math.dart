@@ -62,6 +62,14 @@ class PortfolioMath {
   }
 }
 
+/// Stand-in shown wherever a balance is hidden. Fixed width so the layout
+/// doesn't jump when toggling, and it gives away nothing about the real figure.
+const String maskedValue = '******';
+
+/// [value] normally, or the asterisk mask when the user has hidden balances.
+/// Lives here so the UI and the home widget mask identically.
+String maskIfHidden(String value, bool hidden) => hidden ? maskedValue : value;
+
 /// Format a portfolio-alert target/value for display, given its denomination.
 String formatDenomValue(double value, AlertDenom denom, String? symbol) {
   if (denom == AlertDenom.usd) {

@@ -6,6 +6,7 @@ import '../models/portfolio.dart';
 import '../models/portfolio_alert.dart';
 import '../models/price_alert.dart';
 import '../providers/app_state.dart';
+import '../providers/theme_provider.dart';
 import '../services/notification_service.dart';
 import '../services/portfolio_math.dart';
 import '../services/storage_service.dart';
@@ -17,8 +18,29 @@ import 'theme/glass.dart';
 
 /// Manage the portfolio (holdings), see its live value, and set alerts on the
 /// total value denominated in USD or another token.
-class PortfolioScreen extends StatelessWidget {
+///
+/// Prices stream in live, but a manual refresh is offered both as an app bar
+/// button and as pull-to-refresh for when a socket has been asleep (e.g. the
+/// app was backgrounded) and the user wants to force a fresh snapshot.
+class PortfolioScreen extends StatefulWidget {
   const PortfolioScreen({super.key});
+
+  @override
+  State<PortfolioScreen> createState() => _PortfolioScreenState();
+}
+
+class _PortfolioScreenState extends State<PortfolioScreen> {
+  bool _refreshing = false;
+
+  Future<void> _refresh() async {
+    if (_refreshing) return;
+    setState(() => _refreshing = true);
+    try {
+      await context.read<AppState>().refresh();
+    } finally {
+      if (mounted) setState(() => _refreshing = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -26,8 +48,39 @@ class PortfolioScreen extends StatelessWidget {
     final holdings = state.portfolio.holdings;
     final alerts = state.portfolioAlerts;
 
+    final hidden = state.hideBalances;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Portfolio')),
+      appBar: AppBar(
+        title: const Text('Holdings'),
+        actions: [
+          Consumer<ThemeProvider>(
+            builder: (context, theme, _) => IconButton(
+              tooltip: theme.isDark
+                  ? 'Switch to light mode'
+                  : 'Switch to dark mode',
+              icon: Icon(theme.isDark
+                  ? Icons.light_mode_outlined
+                  : Icons.dark_mode_outlined),
+              onPressed: theme.toggle,
+            ),
+          ),
+          IconButton(
+            tooltip: 'Refresh prices',
+            // Swap in a spinner while refreshing so the tap has visible effect
+            // even when every price comes back unchanged.
+            icon: _refreshing
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.refresh),
+            onPressed: _refreshing ? null : _refresh,
+          ),
+          const SizedBox(width: 4),
+        ],
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _editHolding(context, state),
         backgroundColor: AppColors.accent,
@@ -36,43 +89,53 @@ class PortfolioScreen extends StatelessWidget {
         label: const Text('Add holding',
             style: TextStyle(fontWeight: FontWeight.w700)),
       ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
-        children: [
-          _ValueCard(usd: state.portfolioUsdValue),
-          const SizedBox(height: 20),
-          _sectionTitle(context, 'Holdings'),
-          const SizedBox(height: 8),
-          if (holdings.isEmpty)
-            _hint(context,
-                'No holdings yet. Add the tokens you own and how many.')
-          else
-            ...holdings.map((h) => _HoldingRow(
-                  holding: h,
-                  state: state,
-                  onTap: () => _editHolding(context, state, existing: h),
-                )),
-          const SizedBox(height: 24),
-          Row(
-            children: [
-              Expanded(child: _sectionTitle(context, 'Portfolio alerts')),
-              TextButton.icon(
-                onPressed: holdings.isEmpty
-                    ? null
-                    : () => _addAlert(context, state),
-                icon: const Icon(Icons.add_alert, size: 18),
-                label: const Text('New'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          if (alerts.isEmpty)
-            _hint(context,
-                'Get notified when your whole portfolio reaches a target '
-                'value — in USD or in units of another token.')
-          else
-            ...alerts.map((a) => _AlertRow(alert: a, state: state)),
-        ],
+      body: RefreshIndicator(
+        onRefresh: _refresh,
+        child: ListView(
+          // Always scrollable so pull-to-refresh works even when the list is
+          // short enough to fit on screen.
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+          children: [
+            _ValueCard(
+              usd: state.portfolioUsdValue,
+              hidden: hidden,
+              onToggleHidden: state.toggleHideBalances,
+            ),
+            const SizedBox(height: 20),
+            _sectionTitle(context, 'Holdings'),
+            const SizedBox(height: 8),
+            if (holdings.isEmpty)
+              _hint(context,
+                  'No holdings yet. Add the tokens you own and how many.')
+            else
+              ...holdings.map((h) => _HoldingRow(
+                    holding: h,
+                    state: state,
+                    onTap: () => _editHolding(context, state, existing: h),
+                  )),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(child: _sectionTitle(context, 'Portfolio alerts')),
+                TextButton.icon(
+                  onPressed: holdings.isEmpty
+                      ? null
+                      : () => _addAlert(context, state),
+                  icon: const Icon(Icons.add_alert, size: 18),
+                  label: const Text('New'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            if (alerts.isEmpty)
+              _hint(context,
+                  'Get notified when your whole portfolio reaches a target '
+                  'value — in USD or in units of another token.')
+            else
+              ...alerts.map((a) => _AlertRow(alert: a, state: state)),
+          ],
+        ),
       ),
     );
   }
@@ -113,28 +176,56 @@ class PortfolioScreen extends StatelessWidget {
   }
 }
 
+/// The portfolio total, with the single control that hides it.
+///
+/// Hiding covers this figure and the home widget's copy of it — nothing else
+/// on the screen, so holdings and alerts stay readable.
 class _ValueCard extends StatelessWidget {
-  const _ValueCard({required this.usd});
+  const _ValueCard({
+    required this.usd,
+    required this.hidden,
+    required this.onToggleHidden,
+  });
   final double usd;
+  final bool hidden;
+  final VoidCallback onToggleHidden;
 
   @override
   Widget build(BuildContext context) {
+    final muted = AppColors.muted(Theme.of(context).brightness);
     return GlassCard(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
+      padding: const EdgeInsets.fromLTRB(20, 14, 12, 22),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('TOTAL VALUE',
-              style: TextStyle(
-                letterSpacing: 1,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: AppColors.muted(Theme.of(context).brightness),
-              )),
-          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: Text('TOTAL VALUE',
+                    style: TextStyle(
+                      letterSpacing: 1,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: muted,
+                    )),
+              ),
+              IconButton(
+                tooltip: hidden ? 'Show balances' : 'Hide balances',
+                visualDensity: VisualDensity.compact,
+                iconSize: 20,
+                color: muted,
+                icon: Icon(hidden
+                    ? Icons.visibility_off_outlined
+                    : Icons.visibility_outlined),
+                onPressed: onToggleHidden,
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
           Text(
             // Portfolio total always uses 2-decimal USD (avoids $0.00000000).
-            formatDenomValue(usd, AlertDenom.usd, null),
+            maskIfHidden(
+                formatDenomValue(usd, AlertDenom.usd, null), hidden),
             style: const TextStyle(
               fontSize: 34,
               fontWeight: FontWeight.w800,
@@ -147,9 +238,16 @@ class _ValueCard extends StatelessWidget {
   }
 }
 
+/// A single holding: token amount, its unit price, and its USD value.
+///
+/// Never masked — only the portfolio total is hidden, so the per-holding
+/// figures stay readable.
 class _HoldingRow extends StatelessWidget {
-  const _HoldingRow(
-      {required this.holding, required this.state, required this.onTap});
+  const _HoldingRow({
+    required this.holding,
+    required this.state,
+    required this.onTap,
+  });
   final Holding holding;
   final AppState state;
   final VoidCallback onTap;
@@ -201,6 +299,10 @@ class _HoldingRow extends StatelessWidget {
   }
 }
 
+/// A portfolio alert: its target, and where the portfolio sits against it.
+///
+/// Never masked — hiding covers the headline total only, and blanking the
+/// live figure here would make the alert list unreadable.
 class _AlertRow extends StatelessWidget {
   const _AlertRow({required this.alert, required this.state});
   final PortfolioAlert alert;

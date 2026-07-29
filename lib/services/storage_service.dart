@@ -17,6 +17,7 @@ class StorageService {
   static const _kAlerts = 'alerts_v1';
   static const _kPortfolio = 'portfolio_v1';
   static const _kPortfolioAlerts = 'portfolio_alerts_v1';
+  static const _kHideBalances = 'hide_balances_v1';
 
   /// Cached last-known prices, JSON map of symbol -> {price, change}.
   /// Written by both the UI and background tasks; read by the widget.
@@ -90,6 +91,21 @@ class StorageService {
     );
   }
 
+  // ---- Privacy -----------------------------------------------------------
+
+  /// Whether balances (portfolio total, holding amounts/values) are masked.
+  /// Read by the background isolate too, so the widget stays hidden while the
+  /// app isn't running.
+  Future<bool> loadHideBalances() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_kHideBalances) ?? false;
+  }
+
+  Future<void> saveHideBalances(bool hidden) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kHideBalances, hidden);
+  }
+
   /// Persist the latest prices so the widget and background tasks can read them
   /// without a live socket.
   static Future<void> cachePrices(Map<String, PriceTick> prices) async {
@@ -121,8 +137,9 @@ class StorageService {
 
   static const _kCachedStats = 'cached_stats_v1';
 
-  /// Persist coin stats (logos + 7d/30d change) so they show instantly on the
-  /// next launch, even before CoinGecko responds (or if it's rate-limited).
+  /// Persist coin stats (logos + multi-day changes) so they show instantly on
+  /// the next launch, before the exchanges have answered. Logos in particular
+  /// are only ever looked up for coins the cache has none for.
   static Future<void> cacheStats(Map<String, CoinStats> stats) async {
     final prefs = await SharedPreferences.getInstance();
     final map = stats.map((k, v) => MapEntry(k, v.toJson()));
@@ -143,70 +160,70 @@ class StorageService {
 /// A curated catalog of popular coins available as Binance USDT pairs.
 /// Used to seed the watchlist and power the "add coin" search UI with names.
 const List<Coin> coinCatalog = [
-  Coin(symbol: 'btc', name: 'Bitcoin', coingeckoId: 'bitcoin'),
-  Coin(symbol: 'eth', name: 'Ethereum', coingeckoId: 'ethereum'),
-  Coin(symbol: 'bnb', name: 'BNB', coingeckoId: 'binancecoin'),
-  Coin(symbol: 'sol', name: 'Solana', coingeckoId: 'solana'),
-  Coin(symbol: 'xrp', name: 'XRP', coingeckoId: 'ripple'),
-  Coin(symbol: 'trx', name: 'TRON', coingeckoId: 'tron'),
-  Coin(symbol: 'hype', name: 'Hyperliquid', coingeckoId: 'hyperliquid', exchange: Exchange.bybit),
-  Coin(symbol: 'doge', name: 'Dogecoin', coingeckoId: 'dogecoin'),
-  Coin(symbol: 'zec', name: 'Zcash', coingeckoId: 'zcash'),
-  Coin(symbol: 'xlm', name: 'Stellar', coingeckoId: 'stellar'),
-  Coin(symbol: 'ada', name: 'Cardano', coingeckoId: 'cardano'),
-  Coin(symbol: 'link', name: 'Chainlink', coingeckoId: 'chainlink'),
-  Coin(symbol: 'bch', name: 'Bitcoin Cash', coingeckoId: 'bitcoin-cash'),
-  Coin(symbol: 'ltc', name: 'Litecoin', coingeckoId: 'litecoin'),
-  Coin(symbol: 'sui', name: 'Sui', coingeckoId: 'sui'),
-  Coin(symbol: 'hbar', name: 'Hedera', coingeckoId: 'hedera-hashgraph'),
-  Coin(symbol: 'avax', name: 'Avalanche', coingeckoId: 'avalanche-2'),
-  Coin(symbol: 'near', name: 'NEAR Protocol', coingeckoId: 'near'),
-  Coin(symbol: 'shib', name: 'Shiba Inu', coingeckoId: 'shiba-inu'),
-  Coin(symbol: 'uni', name: 'Uniswap', coingeckoId: 'uniswap'),
-  Coin(symbol: 'ondo', name: 'Ondo', coingeckoId: 'ondo-finance'),
-  Coin(symbol: 'tao', name: 'Bittensor', coingeckoId: 'bittensor'),
-  Coin(symbol: 'wlfi', name: 'World Liberty Financial', coingeckoId: 'world-liberty-financial'),
-  Coin(symbol: 'aster', name: 'Aster', coingeckoId: 'aster-2'),
-  Coin(symbol: 'htx', name: 'HTX DAO', coingeckoId: 'htx-dao', exchange: Exchange.bybit),
-  Coin(symbol: 'sky', name: 'Sky', coingeckoId: 'sky'),
-  Coin(symbol: 'aave', name: 'Aave', coingeckoId: 'aave'),
-  Coin(symbol: 'dot', name: 'Polkadot', coingeckoId: 'polkadot'),
-  Coin(symbol: 'mnt', name: 'Mantle', coingeckoId: 'mantle', exchange: Exchange.bybit),
-  Coin(symbol: 'wld', name: 'Worldcoin', coingeckoId: 'worldcoin-wld'),
-  Coin(symbol: 'morpho', name: 'Morpho', coingeckoId: 'morpho'),
-  Coin(symbol: 'pepe', name: 'Pepe', coingeckoId: 'pepe'),
-  Coin(symbol: 'icp', name: 'Internet Computer', coingeckoId: 'internet-computer'),
-  Coin(symbol: 'etc', name: 'Ethereum Classic', coingeckoId: 'ethereum-classic'),
-  Coin(symbol: 'dexe', name: 'DeXe', coingeckoId: 'dexe'),
-  Coin(symbol: 'qnt', name: 'Quant', coingeckoId: 'quant-network'),
-  Coin(symbol: 'kcs', name: 'KuCoin', coingeckoId: 'kucoin-shares', exchange: Exchange.bybit),
-  Coin(symbol: 'pol', name: 'POL (ex-MATIC)', coingeckoId: 'polygon-ecosystem-token'),
-  Coin(symbol: 'jst', name: 'JUST', coingeckoId: 'just'),
-  Coin(symbol: 'ena', name: 'Ethena', coingeckoId: 'ethena'),
-  Coin(symbol: 'pump', name: 'Pump.fun', coingeckoId: 'pump-fun'),
-  Coin(symbol: 'render', name: 'Render', coingeckoId: 'render-token'),
-  Coin(symbol: 'kas', name: 'Kaspa', coingeckoId: 'kaspa', exchange: Exchange.bybit),
-  Coin(symbol: 'atom', name: 'Cosmos', coingeckoId: 'cosmos'),
-  Coin(symbol: 'nexo', name: 'NEXO', coingeckoId: 'nexo'),
-  Coin(symbol: 'algo', name: 'Algorand', coingeckoId: 'algorand'),
-  Coin(symbol: 'jup', name: 'Jupiter', coingeckoId: 'jupiter-exchange-solana'),
-  Coin(symbol: 'fil', name: 'Filecoin', coingeckoId: 'filecoin'),
-  Coin(symbol: 'arb', name: 'Arbitrum', coingeckoId: 'arbitrum'),
-  Coin(symbol: 'xdc', name: 'XDC Network', coingeckoId: 'xdce-crowd-sale', exchange: Exchange.bybit),
-  Coin(symbol: 'flr', name: 'Flare', coingeckoId: 'flare-networks', exchange: Exchange.bybit),
-  Coin(symbol: 'inj', name: 'Injective', coingeckoId: 'injective-protocol'),
+  Coin(symbol: 'btc', name: 'Bitcoin'),
+  Coin(symbol: 'eth', name: 'Ethereum'),
+  Coin(symbol: 'bnb', name: 'BNB'),
+  Coin(symbol: 'sol', name: 'Solana'),
+  Coin(symbol: 'xrp', name: 'XRP'),
+  Coin(symbol: 'trx', name: 'TRON'),
+  Coin(symbol: 'hype', name: 'Hyperliquid', exchange: Exchange.bybit),
+  Coin(symbol: 'doge', name: 'Dogecoin'),
+  Coin(symbol: 'zec', name: 'Zcash'),
+  Coin(symbol: 'xlm', name: 'Stellar'),
+  Coin(symbol: 'ada', name: 'Cardano'),
+  Coin(symbol: 'link', name: 'Chainlink'),
+  Coin(symbol: 'bch', name: 'Bitcoin Cash'),
+  Coin(symbol: 'ltc', name: 'Litecoin'),
+  Coin(symbol: 'sui', name: 'Sui'),
+  Coin(symbol: 'hbar', name: 'Hedera'),
+  Coin(symbol: 'avax', name: 'Avalanche'),
+  Coin(symbol: 'near', name: 'NEAR Protocol'),
+  Coin(symbol: 'shib', name: 'Shiba Inu'),
+  Coin(symbol: 'uni', name: 'Uniswap'),
+  Coin(symbol: 'ondo', name: 'Ondo'),
+  Coin(symbol: 'tao', name: 'Bittensor'),
+  Coin(symbol: 'wlfi', name: 'World Liberty Financial'),
+  Coin(symbol: 'aster', name: 'Aster'),
+  Coin(symbol: 'htx', name: 'HTX DAO', exchange: Exchange.bybit),
+  Coin(symbol: 'sky', name: 'Sky'),
+  Coin(symbol: 'aave', name: 'Aave'),
+  Coin(symbol: 'dot', name: 'Polkadot'),
+  Coin(symbol: 'mnt', name: 'Mantle', exchange: Exchange.bybit),
+  Coin(symbol: 'wld', name: 'Worldcoin'),
+  Coin(symbol: 'morpho', name: 'Morpho'),
+  Coin(symbol: 'pepe', name: 'Pepe'),
+  Coin(symbol: 'icp', name: 'Internet Computer'),
+  Coin(symbol: 'etc', name: 'Ethereum Classic'),
+  Coin(symbol: 'dexe', name: 'DeXe'),
+  Coin(symbol: 'qnt', name: 'Quant'),
+  Coin(symbol: 'kcs', name: 'KuCoin', exchange: Exchange.bybit),
+  Coin(symbol: 'pol', name: 'POL (ex-MATIC)'),
+  Coin(symbol: 'jst', name: 'JUST'),
+  Coin(symbol: 'ena', name: 'Ethena'),
+  Coin(symbol: 'pump', name: 'Pump.fun'),
+  Coin(symbol: 'render', name: 'Render'),
+  Coin(symbol: 'kas', name: 'Kaspa', exchange: Exchange.bybit),
+  Coin(symbol: 'atom', name: 'Cosmos'),
+  Coin(symbol: 'nexo', name: 'NEXO'),
+  Coin(symbol: 'algo', name: 'Algorand'),
+  Coin(symbol: 'jup', name: 'Jupiter'),
+  Coin(symbol: 'fil', name: 'Filecoin'),
+  Coin(symbol: 'arb', name: 'Arbitrum'),
+  Coin(symbol: 'xdc', name: 'XDC Network', exchange: Exchange.bybit),
+  Coin(symbol: 'flr', name: 'Flare', exchange: Exchange.bybit),
+  Coin(symbol: 'inj', name: 'Injective'),
   // Popular coins just outside the current top 100 (kept for continuity).
-  Coin(symbol: 'apt', name: 'Aptos', coingeckoId: 'aptos'),
-  Coin(symbol: 'op', name: 'Optimism', coingeckoId: 'optimism'),
-  Coin(symbol: 'sei', name: 'Sei', coingeckoId: 'sei-network'),
+  Coin(symbol: 'apt', name: 'Aptos'),
+  Coin(symbol: 'op', name: 'Optimism'),
+  Coin(symbol: 'sei', name: 'Sei'),
 ];
 
 /// The initial watchlist for a fresh install.
 const List<Coin> defaultWatchlist = [
-  Coin(symbol: 'btc', name: 'Bitcoin', coingeckoId: 'bitcoin'),
-  Coin(symbol: 'eth', name: 'Ethereum', coingeckoId: 'ethereum'),
-  Coin(symbol: 'sol', name: 'Solana', coingeckoId: 'solana'),
-  Coin(symbol: 'bnb', name: 'BNB', coingeckoId: 'binancecoin'),
+  Coin(symbol: 'btc', name: 'Bitcoin'),
+  Coin(symbol: 'eth', name: 'Ethereum'),
+  Coin(symbol: 'sol', name: 'Solana'),
+  Coin(symbol: 'bnb', name: 'BNB'),
 ];
 
 /// Resolve a friendly name for a base symbol, falling back to the ticker.
@@ -218,12 +235,3 @@ String nameForSymbol(String symbol) {
   return symbol.toUpperCase();
 }
 
-/// Resolve the CoinGecko id for a base symbol from the catalog, or null if the
-/// coin isn't in our curated list.
-String? coingeckoIdForSymbol(String symbol) {
-  final lower = symbol.toLowerCase();
-  for (final c in coinCatalog) {
-    if (c.symbol == lower) return c.coingeckoId;
-  }
-  return null;
-}

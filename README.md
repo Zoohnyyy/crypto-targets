@@ -1,10 +1,12 @@
-# Crypto Prices
+# Crypto Targets
 
 A Flutter (Android) app showing **real-time cryptocurrency prices** with:
 
-- ⚡ **Live streaming prices** from Binance WebSocket (sub-second updates in-app)
-- 🏠 **Home screen widget** showing up to 4 coins, refreshed periodically in the background
+- ⚡ **Live streaming prices** from Binance WebSocket (sub-second updates in-app), plus Bybit for coins Binance doesn't list (e.g. HYPE)
+- 🏠 **Home screen widgets** — one for up to 4 watchlist coins, one for your total portfolio value, both refreshed in the background
 - ⭐ **Customizable watchlist** — search and add any Binance USDT pair, reorder, remove
+- 📊 **Change over 24h / 7d / 30d / 90d** on every coin, with 1D/1W/1M/3M charts
+- 💼 **Portfolio tracking** — holdings, live total value, and pull-to-refresh
 - 🔔 **Price alerts** — get a local notification when a coin crosses a target price
 
 ## Architecture
@@ -14,7 +16,7 @@ A Flutter (Android) app showing **real-time cryptocurrency prices** with:
 | Real-time prices (app open) | Binance combined WebSocket ticker stream, single socket, auto-reconnect |
 | Prices (app closed / widget) | REST snapshot fetched by a `WorkManager` periodic task (~15 min, Android minimum) |
 | Watchlist & alerts storage | `shared_preferences` |
-| Home widget | `home_widget` package + native `CryptoWidgetProvider` (Kotlin) |
+| Home widgets | `home_widget` package + native `CryptoWidgetProvider` / `PortfolioWidgetProvider` (Kotlin) |
 | Notifications | `flutter_local_notifications`, fired from the background task |
 | State management | `provider` |
 
@@ -73,12 +75,14 @@ flutter run                 # debug
 flutter run --release       # release build (smoother, real-world perf)
 ```
 
-### Adding the widget to your home screen
+### Adding a widget to your home screen
 
 1. Install and open the app once (so it writes initial data).
 2. Long-press your Android home screen → **Widgets**.
-3. Find **Crypto Prices** and drag it to the home screen.
-4. It shows your first 4 watchlist coins and refreshes automatically.
+3. Find **Crypto Targets** — there are two widgets to choose from:
+   - **Crypto Targets — Prices**: your first 4 watchlist coins.
+   - **Crypto Targets — Portfolio**: total portfolio value, its 24h change, and your largest holdings.
+4. Drag either (or both) to the home screen; they refresh automatically.
 
 ### Notifications
 

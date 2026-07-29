@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../models/coin.dart';
 import '../providers/app_state.dart';
-import '../services/coingecko_service.dart';
+import '../services/market_history_service.dart';
 import 'alerts_screen.dart';
 import 'coin_logo.dart';
 import 'format.dart';
@@ -12,18 +12,19 @@ import 'theme/app_theme.dart';
 import 'theme/flash_price.dart';
 import 'theme/glass.dart';
 
-/// Selectable chart ranges mapped to CoinGecko `days`.
+/// Selectable chart ranges, in days of history.
 enum ChartRange {
   day('1D', 1),
   week('1W', 7),
-  month('1M', 30);
+  month('1M', 30),
+  quarter('3M', 90);
 
   const ChartRange(this.label, this.days);
   final String label;
   final int days;
 }
 
-/// Detail page for a single coin: live header, Day/Week/Month price chart,
+/// Detail page for a single coin: live header, 1D/1W/1M/3M price chart,
 /// and quick access to price alerts.
 class CoinDetailScreen extends StatefulWidget {
   const CoinDetailScreen({super.key, required this.coin});
@@ -59,7 +60,7 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
       _error = null;
     });
     try {
-      final points = await CoinGeckoService.fetchMarketChart(
+      final points = await MarketHistoryService.fetchSeries(
         widget.coin,
         days: range.days,
       );
@@ -248,6 +249,7 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
       ('24h', tick?.changePercent ?? stats?.change24h),
       ('7d', stats?.change7d),
       ('30d', stats?.change30d),
+      ('90d', stats?.change90d),
     ];
     return Row(
       children: [
@@ -271,14 +273,21 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
                           fontWeight: FontWeight.w600,
                         )),
                     const SizedBox(height: 6),
-                    Text(
-                      pct != null ? formatChange(pct) : '—',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontFeatures: const [FontFeature.tabularFigures()],
-                        color: pct == null
-                            ? Colors.grey
-                            : (pct >= 0 ? AppColors.green : AppColors.red),
+                    // Shrink rather than overflow: four cards across leaves
+                    // little room for large multi-day moves.
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        pct != null ? formatChange(pct) : '—',
+                        maxLines: 1,
+                        softWrap: false,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                          color: pct == null
+                              ? Colors.grey
+                              : (pct >= 0 ? AppColors.green : AppColors.red),
+                        ),
                       ),
                     ),
                   ],
@@ -306,7 +315,7 @@ class _ChartError extends StatelessWidget {
           const Text("Couldn't load chart"),
           const SizedBox(height: 4),
           const Text(
-            'CoinGecko may be rate-limited. Try again in a moment.',
+            'Couldn’t reach the exchange. Try again in a moment.',
             style: TextStyle(fontSize: 12, color: Colors.grey),
             textAlign: TextAlign.center,
           ),

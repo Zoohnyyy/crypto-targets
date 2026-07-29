@@ -7,7 +7,7 @@ import 'services/backend_sync.dart';
 import 'services/background_service.dart';
 import 'services/notification_service.dart';
 import 'services/push_service.dart';
-import 'ui/home_screen.dart';
+import 'ui/main_shell.dart';
 import 'ui/theme/app_theme.dart';
 
 Future<void> main() async {
@@ -42,12 +42,12 @@ class CryptoApp extends StatelessWidget {
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, theme, _) => MaterialApp(
-          title: 'Crypto Prices',
+          title: 'Crypto Targets',
           debugShowCheckedModeBanner: false,
           themeMode: theme.mode,
           theme: AppTheme.build(Brightness.light),
           darkTheme: AppTheme.build(Brightness.dark),
-          home: const HomeScreen(),
+          home: const MainShell(),
         ),
       ),
     );

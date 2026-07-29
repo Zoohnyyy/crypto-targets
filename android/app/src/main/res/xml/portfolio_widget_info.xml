@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 4 cells wide, 1 cell tall. minWidth/minHeight follow the 70n-30 cell
+     formula for launchers on Android 11 and below. -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="250dp"
+    android:minHeight="40dp"
+    android:targetCellWidth="4"
+    android:targetCellHeight="1"
+    android:updatePeriodMillis="1800000"
+    android:initialLayout="@layout/portfolio_widget"
+    android:previewLayout="@layout/portfolio_widget"
+    android:resizeMode="horizontal"
+    android:widgetCategory="home_screen"
+    android:description="@string/portfolio_widget_description" />

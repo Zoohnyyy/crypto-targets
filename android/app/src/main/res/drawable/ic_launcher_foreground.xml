@@ -1,14 +1,37 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Adaptive-icon foreground: a Mario-style gold coin.
+
+  Flat cartoon shading (rim, body, inner capsule outline, specular highlight)
+  rather than gradients — it stays legible down to 48px and matches the look
+  it's imitating. The coin is r=34 around the 108x108 centre, so it sits inside
+  the 66dp safe zone that launchers may mask down to.
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Simple stylised "coin" glyph centred in the safe zone. -->
+
+    <!-- Rim -->
     <path
-        android:fillColor="#3D5AFE"
-        android:pathData="M54,30 m-20,0 a20,20 0 1,0 40,0 a20,20 0 1,0 -40,0" />
+        android:fillColor="#C77C11"
+        android:pathData="M54,54 m-34,0 a34,34 0 1,0 68,0 a34,34 0 1,0 -68,0" />
+
+    <!-- Body -->
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M50,42 h6 v4 h4 v4 h-4 v8 h4 v4 h-4 v4 h-6 v-4 h-4 v-4 h4 v-8 h-4 v-4 h4 z" />
+        android:fillColor="#FFC61A"
+        android:pathData="M54,54 m-30,0 a30,30 0 1,0 60,0 a30,30 0 1,0 -60,0" />
+
+    <!-- Inner capsule outline -->
+    <path
+        android:strokeColor="#C77C11"
+        android:strokeWidth="4.5"
+        android:fillColor="#00000000"
+        android:pathData="M53,38 h2 a9,9 0 0 1 9,9 v14 a9,9 0 0 1 -9,9 h-2 a9,9 0 0 1 -9,-9 v-14 a9,9 0 0 1 9,-9 z" />
+
+    <!-- Specular highlight, in the clear band between rim and capsule -->
+    <path
+        android:fillColor="#FFE680"
+        android:pathData="M39,39 m-4,0 a4,5.5 0 1,0 8,0 a4,5.5 0 1,0 -8,0" />
 </vector>

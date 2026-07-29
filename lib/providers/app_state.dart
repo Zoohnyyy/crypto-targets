@@ -11,7 +11,8 @@ import '../services/backend_sync.dart';
 import '../services/background_service.dart';
 import '../services/binance_service.dart';
 import '../services/bybit_service.dart';
-import '../services/coingecko_service.dart';
+import '../services/coin_logo_service.dart';
+import '../services/market_history_service.dart';
 import '../services/portfolio_math.dart';
 import '../services/push_service.dart';
 import '../services/storage_service.dart';
@@ -41,6 +42,7 @@ class AppState extends ChangeNotifier {
   List<PriceAlert> _alerts = [];
   Portfolio _portfolio = const Portfolio();
   List<PortfolioAlert> _portfolioAlerts = [];
+  bool _hideBalances = false;
   bool _loading = true;
   StreamSubscription<PriceTick>? _tickSub;
   StreamSubscription<PriceTick>? _bybitTickSub;
@@ -55,6 +57,9 @@ class AppState extends ChangeNotifier {
   List<PortfolioAlert> get portfolioAlerts =>
       List.unmodifiable(_portfolioAlerts);
   bool get loading => _loading;
+
+  /// When true, the UI and the home widget mask balances with asterisks.
+  bool get hideBalances => _hideBalances;
 
   PriceTick? priceFor(String symbol) => _prices[symbol];
 
@@ -82,6 +87,7 @@ class AppState extends ChangeNotifier {
     _alerts = await _storage.loadAlerts();
     _portfolio = await _storage.loadPortfolio();
     _portfolioAlerts = await _storage.loadPortfolioAlerts();
+    _hideBalances = await _storage.loadHideBalances();
 
     // Seed with cached prices + stats for instant display before the network
     // warms up (logos show immediately from the last successful fetch).
@@ -111,26 +117,87 @@ class AppState extends ChangeNotifier {
     );
   }
 
-  /// Poll CoinGecko for logos + 7d/30d change. Multi-day figures barely change
-  /// minute to minute and the free API is rate-limited, so poll every 2 min.
+  /// Coins whose candles are fetched at once. The exchanges are generous
+  /// enough that this is about being a good citizen on a phone's radio, not
+  /// about a rate limit.
+  static const int _statsConcurrency = 4;
+
+  /// Poll the exchanges for the 7d/30d/90d changes. These come from daily
+  /// candles that only close once a day, and the 24h figure already arrives
+  /// live on the socket, so a slow poll is plenty.
   void _startStatsPolling() {
     _statsTimer?.cancel();
     unawaited(_refreshStats());
     _statsTimer = Timer.periodic(
-      const Duration(minutes: 2),
+      const Duration(minutes: 15),
       (_) => unawaited(_refreshStats()),
     );
   }
 
+  /// Refresh every watchlist coin's period changes, then fill in any missing
+  /// logos.
+  ///
+  /// One request per coin covers all four periods, in small parallel batches.
+  /// A coin that fails is simply left with the values it already had.
   Future<void> _refreshStats() async {
-    try {
-      final stats = await CoinGeckoService.fetchStats(_watchlist);
-      if (stats.isEmpty) return;
-      _stats.addAll(stats);
+    final coins = _watchlist;
+    if (coins.isEmpty) return;
+
+    var changed = false;
+    for (var i = 0; i < coins.length; i += _statsConcurrency) {
+      final batch = coins.skip(i).take(_statsConcurrency);
+      final fetched = await Future.wait(batch.map((c) async {
+        try {
+          return await MarketHistoryService.fetchStats(c);
+        } catch (_) {
+          return null;
+        }
+      }));
+
+      for (final stats in fetched) {
+        if (stats == null) continue;
+        // Candles carry no logo, so merge onto what's already there.
+        _stats[stats.symbol] = stats.copyWith(
+          imageUrl: _stats[stats.symbol]?.imageUrl,
+        );
+        changed = true;
+      }
+    }
+
+    if (changed) {
       notifyListeners();
       unawaited(StorageService.cacheStats(Map.of(_stats)));
-    } catch (_) {
-      // Rate limit / transient error: keep whatever we already have.
+    }
+    await _refreshLogos();
+  }
+
+  /// Look up logos for coins that don't have one yet.
+  ///
+  /// Logos never change, so this is a one-time cost per coin: once a URL is
+  /// cached the coin is skipped forever. Usually a no-op.
+  Future<void> _refreshLogos() async {
+    final missing =
+        _watchlist.where((c) => _stats[c.symbol]?.imageUrl == null).toList();
+    if (missing.isEmpty) return;
+
+    var changed = false;
+    for (final coin in missing) {
+      try {
+        final url = await CoinLogoService.fetchLogoUrl(coin.symbol);
+        if (url == null) continue;
+        final existing = _stats[coin.symbol];
+        _stats[coin.symbol] = existing?.copyWith(imageUrl: url) ??
+            CoinStats(symbol: coin.symbol, imageUrl: url);
+        changed = true;
+      } catch (_) {
+        // Offline or a transient error; try again on the next cycle.
+        break;
+      }
+    }
+
+    if (changed) {
+      notifyListeners();
+      unawaited(StorageService.cacheStats(Map.of(_stats)));
     }
   }
 
@@ -176,7 +243,7 @@ class AppState extends ChangeNotifier {
     }
     notifyListeners();
     unawaited(StorageService.cachePrices(Map.of(_prices)));
-    unawaited(WidgetService.update(_watchlist, Map.of(_prices)));
+    unawaited(_pushWidget());
   }
 
   void _startStreaming() {
@@ -202,7 +269,26 @@ class AppState extends ChangeNotifier {
     if (now.difference(_lastWidgetPush) < const Duration(seconds: 30)) return;
     _lastWidgetPush = now;
     unawaited(StorageService.cachePrices(Map.of(_prices)));
-    unawaited(WidgetService.update(_watchlist, Map.of(_prices)));
+    unawaited(_pushWidget());
+  }
+
+  /// Mirror the current prices + portfolio into the home screen widgets.
+  Future<void> _pushWidget() => WidgetService.update(
+        _watchlist,
+        Map.of(_prices),
+        portfolio: _portfolio,
+        hideBalances: _hideBalances,
+      );
+
+  /// User-initiated refresh: re-pull REST snapshots and period changes, and
+  /// make sure the live sockets are connected.
+  ///
+  /// Both underlying calls swallow their own errors, so this completes even
+  /// with no network — the UI just keeps the values it already had.
+  Future<void> refresh() async {
+    // Reconnects only if a socket actually dropped or the symbol set changed.
+    _startStreaming();
+    await Future.wait([_primeSnapshot(), _refreshStats()]);
   }
 
   // ---- Watchlist editing -------------------------------------------------
@@ -240,6 +326,8 @@ class AppState extends ChangeNotifier {
     notifyListeners();
     _startStreaming();
     unawaited(_primeSnapshot());
+    // Picks up a newly added coin's changes and logo without waiting for the
+    // next cycle.
     unawaited(_refreshStats());
     unawaited(BackgroundService.refreshNow());
   }
@@ -288,6 +376,18 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> removeHolding(String symbol) => setHolding(symbol, 0);
+
+  /// Show/hide balances everywhere, including the home screen widget — the
+  /// most exposed surface, so it must follow the same setting.
+  Future<void> setHideBalances(bool hidden) async {
+    if (_hideBalances == hidden) return;
+    _hideBalances = hidden;
+    notifyListeners();
+    await _storage.saveHideBalances(hidden);
+    unawaited(_pushWidget());
+  }
+
+  Future<void> toggleHideBalances() => setHideBalances(!_hideBalances);
 
   Future<void> _persistPortfolio() async {
     await _storage.savePortfolio(_portfolio);

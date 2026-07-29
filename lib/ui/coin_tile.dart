@@ -88,14 +88,16 @@ class CoinTile extends StatelessWidget {
                 ),
             ],
           ),
-          // Period changes strip: 24h / 7d / 30d. The 24h prefers the live
-          // exchange feed so it stays real-time; 7d/30d come from CoinGecko.
+          // Period changes strip: 24h / 7d / 30d / 90d. The 24h prefers the
+          // live socket so it stays real-time; the rest come from daily
+          // candles.
           if (!editing) ...[
             const SizedBox(height: 12),
             _PeriodStrip(
               d1: tick?.changePercent ?? stats?.change24h,
               d7: stats?.change7d,
               d30: stats?.change30d,
+              d90: stats?.change90d,
             ),
           ],
         ],
@@ -104,29 +106,32 @@ class CoinTile extends StatelessWidget {
   }
 }
 
-/// A row of 24h / 7d / 30d change figures, each labelled, separated by thin
-/// dividers. Sits below the price on each coin card.
+/// A row of 24h / 7d / 30d / 90d change figures, each labelled, separated by
+/// thin dividers. Sits below the price on each coin card.
 class _PeriodStrip extends StatelessWidget {
-  const _PeriodStrip({this.d1, this.d7, this.d30});
+  const _PeriodStrip({this.d1, this.d7, this.d30, this.d90});
 
   final double? d1;
   final double? d7;
   final double? d30;
+  final double? d90;
 
   @override
   Widget build(BuildContext context) {
-    final divider = Container(
-      width: 1,
-      height: 22,
-      color: Theme.of(context).dividerColor,
-    );
+    Widget divider() => Container(
+          width: 1,
+          height: 22,
+          color: Theme.of(context).dividerColor,
+        );
     return Row(
       children: [
         Expanded(child: _seg(context, '24H', d1)),
-        divider,
+        divider(),
         Expanded(child: _seg(context, '7D', d7)),
-        divider,
+        divider(),
         Expanded(child: _seg(context, '30D', d30)),
+        divider(),
+        Expanded(child: _seg(context, '90D', d90)),
       ],
     );
   }
@@ -148,15 +153,20 @@ class _PeriodStrip extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 3),
-        Text(
-          pct != null ? formatChange(pct) : '—',
-          maxLines: 1,
-          softWrap: false,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-            fontFeatures: const [FontFeature.tabularFigures()],
-            color: pct != null ? changeColor(pct) : muted,
+        // Four columns leave each one narrow, so shrink rather than clip when a
+        // coin posts a big multi-day move (e.g. "+1234.56%").
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            pct != null ? formatChange(pct) : '—',
+            maxLines: 1,
+            softWrap: false,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              fontFeatures: const [FontFeature.tabularFigures()],
+              color: pct != null ? changeColor(pct) : muted,
+            ),
           ),
         ),
       ],
