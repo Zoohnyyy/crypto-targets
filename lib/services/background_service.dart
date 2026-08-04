@@ -54,7 +54,20 @@ Future<void> _runRefresh() async {
       resolve: _resolveCoin)) {
     coins.putIfAbsent(c.symbol, () => c);
   }
-  if (coins.isEmpty) return;
+  // Nothing needs a live price. A portfolio of only fixed-price holdings (an
+  // all-USDT balance) still has a total worth showing, so refresh the widget
+  // before bowing out.
+  if (coins.isEmpty) {
+    if (portfolio.holdings.isNotEmpty) {
+      await WidgetService.update(
+        watchlist,
+        const {},
+        portfolio: portfolio,
+        hideBalances: hideBalances,
+      );
+    }
+    return;
+  }
   final coinList = coins.values.toList();
 
   // Fetch both exchanges in parallel; one failing shouldn't block the other.

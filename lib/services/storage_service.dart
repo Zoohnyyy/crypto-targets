@@ -162,6 +162,9 @@ class StorageService {
 const List<Coin> coinCatalog = [
   Coin(symbol: 'btc', name: 'Bitcoin'),
   Coin(symbol: 'eth', name: 'Ethereum'),
+  // The quote asset itself: holdable and usable as an alert denomination, but
+  // it has no pair to price or chart, so it never reaches the exchanges.
+  Coin(symbol: 'usdt', name: 'Tether', exchange: Exchange.none),
   Coin(symbol: 'bnb', name: 'BNB'),
   Coin(symbol: 'sol', name: 'Solana'),
   Coin(symbol: 'xrp', name: 'XRP'),

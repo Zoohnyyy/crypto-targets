@@ -4,13 +4,30 @@
 /// on Binance and are served from Bybit instead.
 enum Exchange {
   binance,
-  bybit;
+  bybit,
+
+  /// No feed at all: the coin's USD value is fixed (see [fixedUsdPrice]).
+  ///
+  /// Coins marked this way must be kept out of every subscription and REST
+  /// call — there is no `USDTUSDT` pair, and Bybit rejects an entire subscribe
+  /// frame containing one symbol it doesn't list.
+  none;
 
   static Exchange fromName(String? name) => Exchange.values.firstWhere(
         (e) => e.name == name,
         orElse: () => Exchange.binance,
       );
 }
+
+/// USD prices for symbols that have no market pair because they *are* what
+/// everything else is priced in.
+///
+/// The whole app quotes prices against USDT, so a USDT balance is worth its
+/// face value; there is nothing to stream and nothing to chart.
+const Map<String, double> _fixedUsdPrices = {'usdt': 1.0};
+
+/// The fixed USD price for [symbol], or null if it needs a live price.
+double? fixedUsdPrice(String symbol) => _fixedUsdPrices[symbol.toLowerCase()];
 
 /// A cryptocurrency the user can watch.
 ///

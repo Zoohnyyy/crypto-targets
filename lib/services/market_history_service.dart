@@ -29,10 +29,16 @@ class MarketHistoryService {
   }
 
   /// Price history covering the last [days], oldest point first.
+  ///
+  /// Empty for coins with no market pair (USDT): there is no `USDTUSDT` to
+  /// ask about, so callers get no series and no period changes rather than a
+  /// failed request.
   static Future<List<PricePoint>> fetchSeries(
     Coin coin, {
     required int days,
-  }) {
+  }) async {
+    if (fixedUsdPrice(coin.symbol) != null) return const [];
+
     final (candle, limit) = _resolution(days);
     return coin.exchange == Exchange.bybit
         ? _bybitCandles(coin, candle, limit)

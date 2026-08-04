@@ -61,7 +61,15 @@ class AppState extends ChangeNotifier {
   /// When true, the UI and the home widget mask balances with asterisks.
   bool get hideBalances => _hideBalances;
 
-  PriceTick? priceFor(String symbol) => _prices[symbol];
+  /// Latest tick for a symbol. Coins with no market pair (USDT) report their
+  /// fixed price and a flat 24h change instead of nothing.
+  PriceTick? priceFor(String symbol) {
+    final tick = _prices[symbol];
+    if (tick != null) return tick;
+    final fixed = fixedUsdPrice(symbol);
+    if (fixed == null) return null;
+    return PriceTick(symbol: symbol, price: fixed, changePercent: 0);
+  }
 
   /// Extended stats (logo + 7d/30d change) for a coin, if fetched yet.
   CoinStats? statsFor(String symbol) => _stats[symbol];
@@ -140,8 +148,8 @@ class AppState extends ChangeNotifier {
   /// One request per coin covers all four periods, in small parallel batches.
   /// A coin that fails is simply left with the values it already had.
   Future<void> _refreshStats() async {
+    // An empty watchlist just skips the loop — holdings may still need logos.
     final coins = _watchlist;
-    if (coins.isEmpty) return;
 
     var changed = false;
     for (var i = 0; i < coins.length; i += _statsConcurrency) {
@@ -177,7 +185,7 @@ class AppState extends ChangeNotifier {
   /// cached the coin is skipped forever. Usually a no-op.
   Future<void> _refreshLogos() async {
     final missing =
-        _watchlist.where((c) => _stats[c.symbol]?.imageUrl == null).toList();
+        _logoCoins.where((c) => _stats[c.symbol]?.imageUrl == null).toList();
     if (missing.isEmpty) return;
 
     var changed = false;
@@ -214,6 +222,20 @@ class AppState extends ChangeNotifier {
     );
     for (final c in extra) {
       map.putIfAbsent(c.symbol, () => c);
+    }
+    return map.values.toList();
+  }
+
+  /// Every coin that should have a logo: the watchlist plus anything held.
+  ///
+  /// Holdings are included so a token you own but don't track — a USDT balance,
+  /// say — still shows its artwork rather than a lettered circle.
+  List<Coin> get _logoCoins {
+    final map = <String, Coin>{
+      for (final c in _watchlist) c.symbol: c,
+    };
+    for (final symbol in _portfolio.symbols) {
+      map.putIfAbsent(symbol, () => _resolveCoin(symbol));
     }
     return map.values.toList();
   }

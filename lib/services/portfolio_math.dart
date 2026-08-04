@@ -8,12 +8,17 @@ import '../models/price_alert.dart';
 class PortfolioMath {
   PortfolioMath._();
 
+  /// USD price for [symbol], falling back to a fixed price for coins with no
+  /// market pair (USDT). Null when a live price is needed but missing.
+  static double? priceFor(Map<String, double> prices, String symbol) =>
+      prices[symbol] ?? fixedUsdPrice(symbol);
+
   /// Total USD value of the portfolio given a map of symbol -> USD price.
   /// Holdings whose price is missing contribute 0.
   static double usdValue(Portfolio p, Map<String, double> prices) {
     var total = 0.0;
     for (final h in p.holdings) {
-      final price = prices[h.symbol];
+      final price = priceFor(prices, h.symbol);
       if (price != null) total += h.amount * price;
     }
     return total;
@@ -27,7 +32,7 @@ class PortfolioMath {
     Map<String, double> prices,
     String denomSymbol,
   ) {
-    final denomPrice = prices[denomSymbol.toLowerCase()];
+    final denomPrice = priceFor(prices, denomSymbol.toLowerCase());
     if (denomPrice == null || denomPrice == 0) return null;
     return usdValue(p, prices) / denomPrice;
   }
@@ -47,6 +52,10 @@ class PortfolioMath {
 
   /// Build the set of coins that need USD prices to evaluate the portfolio and
   /// its alerts: every holding token plus every alert denomination token.
+  ///
+  /// Fixed-price coins are excluded — there is no pair to subscribe to, and
+  /// asking an exchange for one would fail (or, on Bybit, take the whole
+  /// subscription down with it).
   static List<Coin> requiredCoins(
     Portfolio p,
     List<PortfolioAlert> alerts, {
@@ -58,6 +67,7 @@ class PortfolioMath {
         symbols.add(a.denomSymbol!.toLowerCase());
       }
     }
+    symbols.removeWhere((s) => fixedUsdPrice(s) != null);
     return symbols.map(resolve).toList();
   }
 }

@@ -2,9 +2,11 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:crypto_prices/models/coin.dart';
 import 'package:crypto_prices/models/coin_stats.dart';
+import 'package:crypto_prices/models/portfolio.dart';
 import 'package:crypto_prices/models/price_alert.dart';
 import 'package:crypto_prices/services/bybit_service.dart';
 import 'package:crypto_prices/services/market_history_service.dart';
+import 'package:crypto_prices/services/portfolio_math.dart';
 import 'package:crypto_prices/services/storage_service.dart';
 
 /// Daily closes reaching exactly [period] days back: [start] that long ago,
@@ -41,6 +43,49 @@ void main() {
     final hype = coinCatalog.firstWhere((c) => c.symbol == 'hype');
     expect(hype.exchange, Exchange.bybit);
     expect(hype.bybitSymbol, 'HYPEUSDT');
+  });
+
+  test('USDT holdings are valued at face value with no live price', () {
+    // There is no USDTUSDT pair, so no price ever arrives for it; the holding
+    // must still count toward the total rather than silently valuing at 0.
+    const portfolio = Portfolio(holdings: [
+      Holding(symbol: 'usdt', amount: 250),
+      Holding(symbol: 'btc', amount: 2),
+    ]);
+    expect(PortfolioMath.usdValue(portfolio, {'btc': 1000}), 2250);
+
+    // And a USDT-only portfolio works with an empty price map.
+    const onlyUsdt = Portfolio(holdings: [Holding(symbol: 'usdt', amount: 40)]);
+    expect(PortfolioMath.usdValue(onlyUsdt, const {}), 40);
+  });
+
+  test('USDT is never sent to an exchange subscription', () {
+    // Bybit rejects an entire subscribe frame containing a symbol it doesn't
+    // list, and Binance 400s on USDTUSDT, so it must not reach requiredCoins.
+    const portfolio = Portfolio(holdings: [
+      Holding(symbol: 'usdt', amount: 100),
+      Holding(symbol: 'eth', amount: 1),
+    ]);
+    final required = PortfolioMath.requiredCoins(
+      portfolio,
+      const [],
+      resolve: (s) => Coin(symbol: s, name: s.toUpperCase()),
+    );
+    expect(required.map((c) => c.symbol), ['eth']);
+
+    // The catalog entry must carry the routing that keeps it out of the feeds.
+    final usdt = coinCatalog.firstWhere((c) => c.symbol == 'usdt');
+    expect(usdt.exchange, Exchange.none);
+    expect(BybitService.symbolsFor([usdt]), isEmpty);
+  });
+
+  test('portfolio value in a token denomination handles USDT', () {
+    const portfolio = Portfolio(holdings: [Holding(symbol: 'btc', amount: 3)]);
+    // Denominated in USDT the answer is just the USD total.
+    expect(
+      PortfolioMath.valueInToken(portfolio, {'btc': 500}, 'usdt'),
+      1500,
+    );
   });
 
   test('PriceAlert above is met at or over target', () {

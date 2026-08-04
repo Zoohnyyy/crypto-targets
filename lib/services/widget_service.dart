@@ -115,7 +115,16 @@ class WidgetService {
 
     for (final h in portfolio.holdings) {
       final tick = prices[h.symbol];
-      if (tick == null) continue;
+      if (tick == null) {
+        // A fixed-price holding (USDT) has no tick, but it does hold value and
+        // it didn't move: counting it on both sides correctly damps the
+        // portfolio's overall percentage instead of inflating it.
+        final fixed = fixedUsdPrice(h.symbol);
+        if (fixed == null) continue;
+        now += h.amount * fixed;
+        before += h.amount * fixed;
+        continue;
+      }
       final factor = 1 + tick.changePercent / 100;
       // A -100% move (or bad data) would divide by zero; skip that holding.
       if (factor <= 0) continue;

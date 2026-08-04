@@ -48,8 +48,11 @@ class _AddCoinScreenState extends State<AddCoinScreen> {
     final seen = <String>{};
     final out = <Coin>[];
 
-    // Catalog matches first (nicer names, ranked).
+    // Catalog matches first (nicer names, ranked). Fixed-price coins are
+    // skipped: the watchlist tracks price movement, and USDT against USDT is a
+    // flat $1.00 with no chart behind it. It stays available as a holding.
     for (final c in coinCatalog) {
+      if (fixedUsdPrice(c.symbol) != null) continue;
       if (q.isEmpty ||
           c.symbol.contains(q) ||
           c.name.toLowerCase().contains(q)) {
